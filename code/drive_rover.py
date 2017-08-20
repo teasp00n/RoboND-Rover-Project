@@ -116,10 +116,10 @@ def telemetry(sid, data):
             out_image_string1, out_image_string2 = create_output_images(Rover)
 
             # The action step!  Send commands to the rover!
- 
+
             # Don't send both of these, they both trigger the simulator
             # to send back new telemetry so we must only send one
-            # back in respose to the current telemetry data.
+            # back in response to the current telemetry data.
 
             # If in a state where want to pickup a rock send pickup command
             if Rover.send_pickup and not Rover.picking_up:

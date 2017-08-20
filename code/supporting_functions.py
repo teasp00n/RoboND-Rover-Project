@@ -93,7 +93,6 @@ def create_output_images(Rover):
       # to confirm whether detections are real
       samples_located = 0
       if rock_world_pos[0].any():
-            
             rock_size = 2
             for idx in range(len(Rover.samples_pos[0])):
                   test_rock_x = Rover.samples_pos[0][idx]
@@ -145,13 +144,10 @@ def create_output_images(Rover):
       buff = BytesIO()
       pil_img.save(buff, format="JPEG")
       encoded_string1 = base64.b64encode(buff.getvalue()).decode("utf-8")
-      
+
       pil_img = Image.fromarray(Rover.vision_image.astype(np.uint8))
       buff = BytesIO()
       pil_img.save(buff, format="JPEG")
       encoded_string2 = base64.b64encode(buff.getvalue()).decode("utf-8")
 
       return encoded_string1, encoded_string2
-
-
-
