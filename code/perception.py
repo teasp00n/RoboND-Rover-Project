@@ -149,24 +149,6 @@ def perception_step(Rover):
 
     worldmap_size = Rover.worldmap.shape[0]
 
-    rock = find_rocks(warped)
-    if rock.any():
-        rock_x, rock_y = object_coords(rock)
-        rock_x_world, rock_y_world = pix_to_world(rock_x, rock_y,
-                                                  Rover.pos[0], Rover.pos[1], Rover.yaw, worldmap_size, scale)
-
-        rock_dist, rock_angle = to_polar_coords(rock_x, rock_y)
-        rock_anchor_index = np.argmin(rock_dist)
-        rock_anchor_x = rock_x_world[rock_anchor_index]
-        rock_anchor_y = rock_y_world[rock_anchor_index]
-
-        Rover.worldmap[rock_anchor_x, rock_anchor_y, 1] += 1
-        Rover.vision_image[:, :, 1] = rock * 255
-        Rover.samples_located += 1
-
-    else:
-        Rover.vision_image[:, :, 1] = 0
-
     rover_x, rover_y = object_coords(navigable_terrain)
     rover_x_world, rover_y_world = pix_to_world(rover_x, rover_y,
                                                 Rover.pos[0], Rover.pos[1], Rover.yaw, worldmap_size, scale)
@@ -175,10 +157,38 @@ def perception_step(Rover):
     obstacles_x_world, obstacles_y_world = pix_to_world(obstacles_x, obstacles_y,
                                                         Rover.pos[0], Rover.pos[1], Rover.yaw, worldmap_size, scale)
 
-    # update rover state
-    dist, angles = to_polar_coords(rover_x, rover_y)
-    Rover.nav_dists = dist
-    Rover.nav_angles = angles
+    rock_map = find_rocks(warped)
+    if rock_map.any():
+        rock_x, rock_y = object_coords(rock_map)
+        rock_x_world, rock_y_world = pix_to_world(rock_x, rock_y,
+                                                  Rover.pos[0], Rover.pos[1], Rover.yaw, worldmap_size, scale)
+
+        rock_dist, rock_angles = to_polar_coords(rock_x, rock_y)
+        rock_anchor_index = np.argmin(rock_dist)
+        rock_anchor_x = rock_x_world[rock_anchor_index]
+        rock_anchor_y = rock_y_world[rock_anchor_index]
+
+        Rover.worldmap[rock_anchor_x, rock_anchor_y, 1] += 1
+        Rover.vision_image[:, :, 1] = rock_map * 255
+        Rover.samples_located += 1
+
+        # if we found a rock lets go towards it
+        Rover.see_sample = 1
+        Rover.nav_dists = rock_dist
+        Rover.nav_angles = rock_angles
+
+    else:
+        Rover.vision_image[:, :, 1] = 0
+        # no rock so we abide by our general navigation principles
+        Rover.see_sample = 0
+        dist, angles = to_polar_coords(rover_x, rover_y)
+        Rover.nav_dists = dist
+        Rover.nav_angles = angles
+
+    #original
+    # dist, angles = to_polar_coords(rover_x, rover_y)
+    # Rover.nav_dists = dist
+    # Rover.nav_angles = angles
 
     Rover.worldmap[rover_y_world, rover_x_world, 2] += 1
     Rover.worldmap[obstacles_y_world, obstacles_x_world, 0] += 1
