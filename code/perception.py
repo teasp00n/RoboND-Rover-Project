@@ -156,7 +156,7 @@ def _perspect_transform(img, src, dst):
 
 
 def _should_map(roll, pitch):
-    return roll < _from_origin(MAX_ROLL) and pitch < _from_origin(MAX_PITCH)
+    return _from_origin(roll) < MAX_ROLL and _from_origin(pitch) < MAX_PITCH
 
 
 def _from_origin(degrees):
