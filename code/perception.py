@@ -5,6 +5,13 @@ import cv2
 MAX_ROLL = 2
 MAX_PITCH = 2
 
+OBSTACLE_CHANNEL = 0
+ROCK_CHANNEL = 1
+NAVIGABLE_CHANNEL = 2
+
+SCALE = 10
+BOTTOM_OFFSET = 6
+
 
 # Identify pixels above the threshold
 # Threshold of RGB > 160 does a nice job of identifying ground pixels only
@@ -182,19 +189,12 @@ def perception_step(Rover):
     # Rover.nav_dists = rover_centric_pixel_distances
     # Rover.nav_angles = rover_centric_angles
 
-    OBSTACLE_CHANNEL = 0
-    ROCK_CHANNEL = 1
-    NAVIGABLE_CHANNEL = 2
-
-    scale = 10
-    bottom_offset = 6
-
     source = np.float32([[14, 140], [301, 140], [200, 96], [118, 96]])
 
-    destination = np.float32([[Rover.img.shape[1] / 2 - (scale / 2), Rover.img.shape[0] - bottom_offset],
-                              [Rover.img.shape[1] / 2 + (scale / 2), Rover.img.shape[0] - bottom_offset],
-                              [Rover.img.shape[1] / 2 + (scale / 2), Rover.img.shape[0] - 2 * (scale / 2) - bottom_offset],
-                              [Rover.img.shape[1] / 2 - (scale / 2), Rover.img.shape[0] - 2 * (scale / 2) - bottom_offset],
+    destination = np.float32([[Rover.img.shape[1] / 2 - (SCALE / 2), Rover.img.shape[0] - BOTTOM_OFFSET],
+                              [Rover.img.shape[1] / 2 + (SCALE / 2), Rover.img.shape[0] - BOTTOM_OFFSET],
+                              [Rover.img.shape[1] / 2 + (SCALE / 2), Rover.img.shape[0] - 2 * (SCALE / 2) - BOTTOM_OFFSET],
+                              [Rover.img.shape[1] / 2 - (SCALE / 2), Rover.img.shape[0] - 2 * (SCALE / 2) - BOTTOM_OFFSET],
                               ])
 
     fov = _field_of_view(Rover.img, source, destination)
@@ -211,17 +211,17 @@ def perception_step(Rover):
 
     rover_x, rover_y = _rover_coords(navigable_terrain)
     rover_x_world, rover_y_world = _pix_to_world(rover_x, rover_y,
-                                                Rover.pos[0], Rover.pos[1], Rover.yaw, worldmap_size, scale)
+                                                Rover.pos[0], Rover.pos[1], Rover.yaw, worldmap_size, SCALE)
 
     obstacles_x, obstacles_y = _rover_coords(obstacles)
     obstacles_x_world, obstacles_y_world = _pix_to_world(obstacles_x, obstacles_y,
-                                                        Rover.pos[0], Rover.pos[1], Rover.yaw, worldmap_size, scale)
+                                                        Rover.pos[0], Rover.pos[1], Rover.yaw, worldmap_size, SCALE)
 
     rock_map = _find_rocks(warped)
     if rock_map.any():
         rock_x, rock_y = _rover_coords(rock_map)
         rock_x_world, rock_y_world = _pix_to_world(rock_x, rock_y,
-                                                  Rover.pos[0], Rover.pos[1], Rover.yaw, worldmap_size, scale)
+                                                  Rover.pos[0], Rover.pos[1], Rover.yaw, worldmap_size, SCALE)
 
         rock_dist, rock_angles = _to_polar_coords(rock_x, rock_y)
         rock_anchor_index = np.argmin(rock_dist)
