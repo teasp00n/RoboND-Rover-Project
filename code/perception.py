@@ -148,6 +148,17 @@ def _perspect_transform(img, src, dst):
     return warped
 
 
+def _should_map(roll, pitch):
+    return roll < _from_origin(MAX_ROLL) and pitch < _from_origin(MAX_PITCH)
+
+
+def _from_origin(degrees):
+    if degrees < 180:
+        return degrees
+    else:
+        return 360 - degrees
+
+
 # Apply the above functions in succession and update the Rover state
 # accordingly
 def perception_step(Rover):
@@ -246,14 +257,3 @@ def perception_step(Rover):
             # Rover.worldmap[obstacles_y_world, obstacles_x_world, OBSTACLE_CHANNEL] += 1
 
     return Rover
-
-
-def _should_map(roll, pitch):
-    return roll < _from_origin(MAX_ROLL) and pitch < _from_origin(MAX_PITCH)
-
-
-def _from_origin(degrees):
-    if degrees < 180:
-        return degrees
-    else:
-        return 360 - degrees
