@@ -185,12 +185,9 @@ def perception_step(Rover):
         Rover.nav_dists = dist
         Rover.nav_angles = angles
 
-    #original
-    # dist, angles = to_polar_coords(rover_x, rover_y)
-    # Rover.nav_dists = dist
-    # Rover.nav_angles = angles
-
-    Rover.worldmap[rover_y_world, rover_x_world, 2] += 1
-    Rover.worldmap[obstacles_y_world, obstacles_x_world, 0] += 1
+    # we are only mapping in one plane. we need to make sure we don't map anything when the robot is all topsy-turvy
+    if Rover.roll < 3 and Rover.pitch < 3:
+        Rover.worldmap[rover_y_world, rover_x_world, 2] += 1
+        Rover.worldmap[obstacles_y_world, obstacles_x_world, 0] += 1
 
     return Rover
