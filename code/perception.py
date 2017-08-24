@@ -47,8 +47,8 @@ def _find_rocks(img, selector=(110, 110, 50)):
     selector is a little different).
     """
     gold_pix = ((img[:, :, 0] > selector[0])
-               & (img[:, :, 1] > selector[1])
-               & (img[:, :, 2] < selector[2]))
+                & (img[:, :, 1] > selector[1])
+                & (img[:, :, 2] < selector[2]))
 
     rock_map = np.zeros_like(img[:, :, 0])
     rock_map[gold_pix] = 1
@@ -211,17 +211,27 @@ def perception_step(Rover):
 
     rover_x, rover_y = _rover_coords(navigable_terrain)
     rover_x_world, rover_y_world = _pix_to_world(rover_x, rover_y,
-                                                Rover.pos[0], Rover.pos[1], Rover.yaw, worldmap_size, SCALE)
+                                                 Rover.pos[0], Rover.pos[1], Rover.yaw, worldmap_size, SCALE)
 
     obstacles_x, obstacles_y = _rover_coords(obstacles)
     obstacles_x_world, obstacles_y_world = _pix_to_world(obstacles_x, obstacles_y,
-                                                        Rover.pos[0], Rover.pos[1], Rover.yaw, worldmap_size, SCALE)
+                                                         Rover.pos[0], Rover.pos[1], Rover.yaw, worldmap_size, SCALE)
+
+    # we are only mapping in one plane. we need to make sure we don't map anything when the robot is all topsy-turvy
+    if _should_map(Rover.roll, Rover.pitch):
+        # we are sure about navigable terrain
+        Rover.worldmap[rover_y_world, rover_x_world, NAVIGABLE_CHANNEL] += 1  # we are sure about navigable terrain
+        # Rover.worldmap[rover_y_world, rover_x_world, OBSTACLE_CHANNEL] = 0  # we are sure about navigable terrain
+
+        # slowly build up confidence that a pixel is in fact an obstacle. If it
+        # isn't then we will set it to 0 when we see it as navigable anyway
+        Rover.worldmap[obstacles_y_world, obstacles_x_world, OBSTACLE_CHANNEL] += 1
 
     rock_map = _find_rocks(warped)
     if rock_map.any():
         rock_x, rock_y = _rover_coords(rock_map)
         rock_x_world, rock_y_world = _pix_to_world(rock_x, rock_y,
-                                                  Rover.pos[0], Rover.pos[1], Rover.yaw, worldmap_size, SCALE)
+                                                   Rover.pos[0], Rover.pos[1], Rover.yaw, worldmap_size, SCALE)
 
         rock_dist, rock_angles = _to_polar_coords(rock_x, rock_y)
         rock_anchor_index = np.argmin(rock_dist)
@@ -233,7 +243,7 @@ def perception_step(Rover):
 
         # NOTE: usually when mapping we would check if our plane is correct but
         # for small items like rocks it doesn't matter as much.
-        Rover.worldmap[rock_anchor_x, rock_anchor_y, ROCK_CHANNEL] = 255
+        Rover.worldmap[rock_anchor_x, rock_anchor_y, ROCK_CHANNEL] += 1
 
         Rover.samples_located += 1
 
@@ -249,15 +259,5 @@ def perception_step(Rover):
         dist, angles = _to_polar_coords(rover_x, rover_y)
         Rover.nav_dists = dist
         Rover.nav_angles = angles
-
-    # we are only mapping in one plane. we need to make sure we don't map anything when the robot is all topsy-turvy
-    if _should_map(Rover.roll, Rover.pitch):
-        # we are sure about navigable terrain
-        Rover.worldmap[rover_y_world, rover_x_world, NAVIGABLE_CHANNEL] = 255  # we are sure about navigable terrain
-        Rover.worldmap[rover_y_world, rover_x_world, OBSTACLE_CHANNEL] = 0  # we are sure about navigable terrain
-
-        # slowly build up confidence that a pixel is in fact an obstacle. If it
-        # isn't then we will set it to 0 when we see it as navigable anyway
-        Rover.worldmap[obstacles_y_world, obstacles_x_world, OBSTACLE_CHANNEL] += 1
 
     return Rover
