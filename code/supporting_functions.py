@@ -36,6 +36,8 @@ def update_rover(Rover, data):
       Rover.vel = convert_to_float(data["speed"])
       # The current position of the rover
       Rover.pos = [convert_to_float(pos.strip()) for pos in data["position"].split(';')]
+      # Append the position to the recent positions of the rover
+      Rover.recent_positions.append([convert_to_float(pos.strip()) for pos in data["position"].split(';')])
       # The current yaw angle of the rover
       Rover.yaw = convert_to_float(data["yaw"])
       # The current yaw angle of the rover
