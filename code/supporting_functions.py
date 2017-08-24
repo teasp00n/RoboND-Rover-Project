@@ -14,6 +14,9 @@ def convert_to_float(string_to_convert):
       return float_value
 
 def update_rover(Rover, data):
+      if Rover.start_position == None:
+            Rover.start_position = [convert_to_float(pos.strip()) for pos in data["position"].split(';')]
+
       # Initialize start time and sample positions
       if Rover.start_time == None:
             Rover.start_time = time.time()
