@@ -1,26 +1,40 @@
 import numpy as np
 
 
+def _are_we_stuck(Rover):
+    """
+    Determines if we are stuck or not by looking at the previous positions we
+    have recorded and checks the delta between the largest and smallest is over
+    some arbitrary threshold.
+    """
+    recent_positions_np = np.array(Rover.recent_positions)
+    delta_x = recent_positions_np[:, 0].ptp()
+    delta_y = recent_positions_np[:, 1].ptp()
+    delta = np.hypot(delta_x, delta_y)
+    return delta < 0.1 and Rover.throttle > 0
+
+
 # This is where you can build a decision tree for determining throttle, brake
 # and steer commands based on the output of the perception_step() function
 def decision_step(Rover):
-
     # Implement conditionals to decide what to do given perception data
     # Here you're all set up with some basic functionality but you'll need to
-    # improve on this decision tree to do a good job of navigating autonomously!
+    # improve on this decision tree to do a good job of navigating
+    # autonomously!
 
     # Example:
     # Check if we have vision data to make decisions with
     if Rover.nav_angles is not None:
 
-        # Steady as she goes!
-        if Rover.see_sample:
-            Rover.max_vel = 1
-        else:
-            Rover.max_vel = 2
-
         # Check for Rover.mode status
         if Rover.mode == 'forward':
+            # Steady as she goes!
+            if Rover.see_sample:
+                Rover.max_vel = 1
+            else:
+                Rover.max_vel = 2
+
+            # print(np.array(Rover.recent_positions[1]).ptp())
             # Check the extent of navigable terrain
             # Check if we see a rock, if we do we don't care if we are running
             # out of space. we must have that rock!
@@ -45,6 +59,11 @@ def decision_step(Rover):
                 Rover.brake = Rover.brake_set
                 Rover.steer = 0
                 Rover.mode = 'stop'
+
+            if _are_we_stuck(Rover):
+                # Rover.mode = 'stuck'
+                pass
+
 
         # If we're already in "stop" mode then make different decisions
         elif Rover.mode == 'stop':
@@ -72,6 +91,11 @@ def decision_step(Rover):
                     Rover.steer = np.clip(
                         np.mean(Rover.nav_angles * 180 / np.pi) -15 , -15, 15)
                     Rover.mode = 'forward'
+
+        elif Rover.mode == 'stuck':
+            Rover.mode = 'stop'
+            print("we are stuck")
+
     # Just to make the rover do something
     # even if no modifications have been made to the code
     else:

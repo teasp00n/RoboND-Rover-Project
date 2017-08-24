@@ -17,6 +17,8 @@ import pickle
 import matplotlib.image as mpimg
 import time
 
+import collections
+
 # Import functions for perception and decision making
 from perception import perception_step
 from decision import decision_step
@@ -35,10 +37,14 @@ ground_truth = mpimg.imread('../calibration_images/map_bw.png')
 # map output looks green in the display image
 ground_truth_3d = np.dstack((ground_truth*0, ground_truth*255, ground_truth*0)).astype(np.float)
 
+
+POSITIONS_TO_REMEMBER = 36 * 3  # remember 3 seconds worth of frames
+
 # Define RoverState() class to retain rover state parameters
 class RoverState():
     def __init__(self):
         self.start_position = None  # Keep track of where we start
+        self.recent_positions = collections.deque([], POSITIONS_TO_REMEMBER)
         self.start_time = None # To record the start time of navigation
         self.total_time = None # To record total duration of naviagation
         self.img = None # Current camera image
