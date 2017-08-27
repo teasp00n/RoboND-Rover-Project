@@ -46,9 +46,9 @@ def _find_rocks(img, selector=(110, 110, 50)):
     This is a variation of _color_thresh specifically for finding rocks (the
     selector is a little different).
     """
-    gold_pix = ((img[:, :, 0] > selector[0])
-                & (img[:, :, 1] > selector[1])
-                & (img[:, :, 2] < selector[2]))
+    gold_pix = ((img[:, :, 0] > selector[0]) &
+                (img[:, :, 1] > selector[1]) &
+                (img[:, :, 2] < selector[2]))
 
     rock_map = np.zeros_like(img[:, :, 0])
     rock_map[gold_pix] = 1
