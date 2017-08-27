@@ -5,11 +5,6 @@ def _get_steer_angle(Rover):
     """
     Inspects the rover state and determines the best way to turn.
     """
-    # seen = p._color_thresh(Rover.worldmap, (0, 0, 50))  # get pixels where we have some blue
-    # # use seen to mask vision
-    # res = Rover.vision_image[seen]
-    # rover_x, rover_y = p._rover_coords(res)
-
     return np.clip(np.mean(Rover.nav_angles * 180 / np.pi), -15, 15)
 
 
