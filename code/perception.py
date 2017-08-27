@@ -248,7 +248,7 @@ def perception_step(Rover):
         Rover.vision_image[:, :, ROCK_CHANNEL] = rock_map * 255
 
         if _should_map(Rover.roll, Rover.pitch):
-            Rover.worldmap[rock_anchor_x, rock_anchor_y, ROCK_CHANNEL] = 255
+            Rover.worldmap[rock_anchor_y, rock_anchor_x, ROCK_CHANNEL] = 255
 
         # if we found a rock lets go towards it
         Rover.see_sample = 1
