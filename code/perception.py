@@ -2,8 +2,8 @@ import numpy as np
 import cv2
 
 
-MAX_ROLL = 2
-MAX_PITCH = 2
+MAX_ROLL = 0.5
+MAX_PITCH = 0.5
 
 OBSTACLE_CHANNEL = 0
 ROCK_CHANNEL = 1
@@ -156,10 +156,17 @@ def _perspect_transform(img, src, dst):
 
 
 def _should_map(roll, pitch):
+    """
+    Checks to see if we should map the pixels we see given our current
+    telemetry.
+    """
     return _from_origin(roll) < MAX_ROLL and _from_origin(pitch) < MAX_PITCH
 
 
 def _from_origin(degrees):
+    """
+    Returns degrees from origin. EG 359 -> 1, 5 -> 5
+    """
     if degrees < 180:
         return degrees
     else:
@@ -220,8 +227,8 @@ def perception_step(Rover):
     # we are only mapping in one plane. we need to make sure we don't map anything when the robot is all topsy-turvy
     if _should_map(Rover.roll, Rover.pitch):
         # we are sure about navigable terrain
-        Rover.worldmap[rover_y_world, rover_x_world, NAVIGABLE_CHANNEL] += 1  # we are sure about navigable terrain
-        # Rover.worldmap[rover_y_world, rover_x_world, OBSTACLE_CHANNEL] = 0  # we are sure about navigable terrain
+        Rover.worldmap[rover_y_world, rover_x_world, NAVIGABLE_CHANNEL] += 10  # we are sure about navigable terrain
+        Rover.worldmap[rover_y_world, rover_x_world, OBSTACLE_CHANNEL] -= 10  # we are sure about navigable terrain
 
         # slowly build up confidence that a pixel is in fact an obstacle. If it
         # isn't then we will set it to 0 when we see it as navigable anyway
@@ -230,8 +237,7 @@ def perception_step(Rover):
     rock_map = _find_rocks(warped)
     if rock_map.any():
         rock_x, rock_y = _rover_coords(rock_map)
-        rock_x_world, rock_y_world = _pix_to_world(rock_x, rock_y,
-                                                   Rover.pos[0], Rover.pos[1], Rover.yaw, worldmap_size, SCALE)
+        rock_x_world, rock_y_world = _pix_to_world(rock_x, rock_y, Rover.pos[0], Rover.pos[1], Rover.yaw, worldmap_size, SCALE)
 
         rock_dist, rock_angles = _to_polar_coords(rock_x, rock_y)
         rock_anchor_index = np.argmin(rock_dist)
@@ -243,9 +249,7 @@ def perception_step(Rover):
 
         # NOTE: usually when mapping we would check if our plane is correct but
         # for small items like rocks it doesn't matter as much.
-        Rover.worldmap[rock_anchor_x, rock_anchor_y, ROCK_CHANNEL] += 1
-
-        Rover.samples_located += 1
+        Rover.worldmap[rock_anchor_x, rock_anchor_y, ROCK_CHANNEL] = 255
 
         # if we found a rock lets go towards it
         Rover.see_sample = 1

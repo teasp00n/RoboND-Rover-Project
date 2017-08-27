@@ -1,6 +1,18 @@
 import numpy as np
 
 
+def _get_steer_angle(Rover):
+    """
+    Inspects the rover state and determines the best way to turn.
+    """
+    # seen = p._color_thresh(Rover.worldmap, (0, 0, 50))  # get pixels where we have some blue
+    # # use seen to mask vision
+    # res = Rover.vision_image[seen]
+    # rover_x, rover_y = p._rover_coords(res)
+
+    return np.clip(np.mean(Rover.nav_angles * 180 / np.pi), -15, 15)
+
+
 def _are_we_stuck(Rover):
     """
     Determines if we are stuck or not by looking at the previous positions we
@@ -11,7 +23,8 @@ def _are_we_stuck(Rover):
     delta_x = recent_positions_np[:, 0].ptp()
     delta_y = recent_positions_np[:, 1].ptp()
     delta = np.hypot(delta_x, delta_y)
-    return delta < 0.1 and Rover.throttle > 0
+    Rover.post_stuck_leway += 1
+    return delta < 0.1 and Rover.throttle > 0 and Rover.post_stuck_leway >= Rover.max_post_stuck_leway
 
 
 # This is where you can build a decision tree for determining throttle, brake
@@ -48,8 +61,7 @@ def decision_step(Rover):
                     Rover.throttle = 0
                 Rover.brake = 0
                 # Set steering to average angle clipped to the range +/- 15
-                Rover.steer = np.clip(
-                    np.mean(Rover.nav_angles * 180 / np.pi), -15, 15)
+                Rover.steer = _get_steer_angle(Rover)
             # If there's a lack of navigable terrain pixels then go to 'stop' mode
             # Or if we are near the rock, we have to stop to pick it up
             elif Rover.near_sample or len(Rover.nav_angles) < Rover.stop_forward:
@@ -61,9 +73,7 @@ def decision_step(Rover):
                 Rover.mode = 'stop'
 
             if _are_we_stuck(Rover):
-                # Rover.mode = 'stuck'
-                pass
-
+                Rover.mode = 'stuck'
 
         # If we're already in "stop" mode then make different decisions
         elif Rover.mode == 'stop':
@@ -80,7 +90,7 @@ def decision_step(Rover):
                     # Release the brake to allow turning
                     Rover.brake = 0
                     # Turn range is +/- 15 degrees, when stopped the next line will induce 4-wheel turning
-                    Rover.steer = -15  # Could be more clever here about which way to turn
+                    Rover.steer = -15
                 # If we're stopped but see sufficient navigable terrain in front then go!
                 if not Rover.see_sample and len(Rover.nav_angles) >= Rover.go_forward:
                     # Set throttle back to stored value
@@ -89,12 +99,22 @@ def decision_step(Rover):
                     Rover.brake = 0
                     # Set steer to mean angle
                     Rover.steer = np.clip(
-                        np.mean(Rover.nav_angles * 180 / np.pi) -15 , -15, 15)
+                        np.mean(Rover.nav_angles * 180 / np.pi), -15, 15)
                     Rover.mode = 'forward'
 
         elif Rover.mode == 'stuck':
-            Rover.mode = 'stop'
-            print("we are stuck")
+            if Rover.spin_ticks <= Rover.max_spin_ticks:
+                Rover.throttle = 0
+                # Release the brake to allow turning
+                Rover.brake = 0
+                # Turn range is +/- 15 degrees, when stopped the next line will induce 4-wheel turning
+                Rover.steer = -15
+                Rover.spin_ticks += 1
+            else:
+                Rover.spin_ticks = 0
+                Rover.post_stuck_leway = 0
+                Rover.mode = 'forward'
+
 
     # Just to make the rover do something
     # even if no modifications have been made to the code
