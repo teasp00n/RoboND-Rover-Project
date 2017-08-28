@@ -1,6 +1,15 @@
 import numpy as np
 
 
+def _are_we_done(Rover):
+    """
+    Determines if the robot has completed its mission.
+    """
+    close_in_x = np.abs(Rover.start_position[0] - Rover.pos[0]) < 1
+    close_in_y = np.abs(Rover.start_position[1] - Rover.pos[1]) < 1
+    return close_in_x and close_in_y and Rover.samples_collected == 6
+
+
 def _get_steer_angle(Rover):
     """
     Inspects the rover state and determines the best way to turn.
@@ -33,6 +42,12 @@ def decision_step(Rover):
     # Example:
     # Check if we have vision data to make decisions with
     if Rover.nav_angles is not None:
+
+        if _are_we_done(Rover):
+            Rover.mode = 'done'
+            Rover.brake = Rover.brake_set
+            Rover.throttle = 0
+            print("we are done")
 
         # Check for Rover.mode status
         if Rover.mode == 'forward':
@@ -109,7 +124,6 @@ def decision_step(Rover):
                 Rover.spin_ticks = 0
                 Rover.post_stuck_leway = 0
                 Rover.mode = 'forward'
-
 
     # Just to make the rover do something
     # even if no modifications have been made to the code
