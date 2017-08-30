@@ -91,7 +91,7 @@ plt.arrow(0, 0, x_arrow, y_arrow, color='red', zorder=2, head_width=10, width=2)
 
 Next we need to write a function to detect the samples we want to collect. We can use a variation of the `color_thresh` function we defined for thresholding the camera images along with a suitable selector obtained by inspecting the calibration images.
 
-[Rock calibration](./example_rock1.jpg)
+![Rock calibration](./rock.png)
 
 ```python
 def find_rocks(img, selector=(110, 110, 50)):
