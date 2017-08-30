@@ -110,7 +110,104 @@ def find_rocks(img, selector=(110, 110, 50)):
     return rock_map
 ```
 
-I also spent some time working on getting a pathfinding algorithm implemented. I did this by driving the rover to various points of interest and noting down the position to build out a graph of nodes. All the nodes were added to the `waypoints` list in the `Graph` object I added to the `RoverState`. Nodes I actually wanted to visit were also added to the `goals` list.
+The `process_image` step is where it all gets brought together to process a given frame and map what we see.
+1. Define our source and destination coordinates for our perspective transform and apply it. Call `field_of_view` with the same values to get our mask. This is important as we don't want to mark anything on our map for the parts of the image that are outside the cameras field of view.
+1. Next we apply the `color_thresh` function to give us our array of navigable pixels.
+1. We can obtain our obstacles by inverting terrain array and applying the fov mask.
+1. We can then convert both navigable terrain pixels and obstacle pixels to the rovers coordinate space.
+1. Next we call `should_map` and add the pixels to their respective channels in the worldmap. `should_map` will always return true as the `DataBucket` doesn't contain `roll` and `pitch` to inspect.
+1. We try find any rock pixels in the image and if so, find the closest one. We then convert this pixel to coordinates with reference to the rovers position and plot it on the worldmap.
+1. We then build out the mosaic by filling the `output_image` pixels to be a combination of images from our pipeline.
+
+```python
+def process_image(img):
+    output_image = np.zeros((img.shape[0] + data.worldmap.shape[0], img.shape[1] * 2, 3))
+    output_image[0:img.shape[0], 0:img.shape[1]] = img  # show original in top left
+
+    source = np.float32([[14, 140], [301, 140], [200, 96], [118, 96]])
+
+    destination = np.float32([[img.shape[1] / 2 - (SCALE / 2), img.shape[0] - BOTTOM_OFFSET],
+                              [img.shape[1] / 2 + (SCALE / 2), img.shape[0] - BOTTOM_OFFSET],
+                              [img.shape[1] / 2 + (SCALE / 2), img.shape[0] - 2 * (SCALE / 2) - BOTTOM_OFFSET],
+                              [img.shape[1] / 2 - (SCALE / 2), img.shape[0] - 2 * (SCALE / 2) - BOTTOM_OFFSET],
+                              ])
+
+    fov = field_of_view(img, source, destination)
+    warped = perspect_transform(img, source, destination)
+
+    navigable_threshold = (160, 160, 160)
+    navigable_terrain = color_thresh(warped, navigable_threshold)
+
+    obstacles = np.absolute(np.float32(navigable_terrain) - 1) * fov
+
+    worldmap_size = data.worldmap.shape[0]
+
+    rover_x, rover_y = rover_coords(navigable_terrain)
+    rover_x_world, rover_y_world = pix_to_world(rover_x, rover_y,
+                                                 data.xpos[data.count], data.ypos[data.count], data.yaw[data.count], worldmap_size, SCALE)
+
+    obstacles_x, obstacles_y = rover_coords(obstacles)
+    obstacles_x_world, obstacles_y_world = pix_to_world(obstacles_x, obstacles_y,
+                                                         data.xpos[data.count], data.ypos[data.count], data.yaw[data.count], worldmap_size, SCALE)
+
+    # we are only mapping in one plane. we need to make sure we don't map anything when the robot is all topsy-turvy
+    #if should_map(data.roll[count], data.pitch[count]):
+    if should_map(0, 0):
+        # we are sure about navigable terrain
+        data.worldmap[rover_y_world, rover_x_world, NAVIGABLE_CHANNEL] += 10  # we are sure about navigable terrain
+        data.worldmap[rover_y_world, rover_x_world, OBSTACLE_CHANNEL] -= 10  # we are sure about navigable terrain
+
+        # slowly build up confidence that a pixel is in fact an obstacle. If it
+        # isn't then we will set it to 0 when we see it as navigable anyway
+        data.worldmap[obstacles_y_world, obstacles_x_world, OBSTACLE_CHANNEL] += 1
+
+    rock_map = find_rocks(warped)
+    if rock_map.any():
+        rock_x, rock_y = rover_coords(rock_map)
+        rock_x_world, rock_y_world = pix_to_world(rock_x, rock_y, data.xpos[data.count], data.ypos[data.count], data.yaw[data.count], worldmap_size, SCALE)
+
+        rock_dist, rock_angles = to_polar_coords(rock_x, rock_y)
+        rock_anchor_index = np.argmin(rock_dist)
+        rock_anchor_x = rock_x_world[rock_anchor_index]
+        rock_anchor_y = rock_y_world[rock_anchor_index]
+
+        data.worldmap[rock_anchor_y, rock_anchor_x, ROCK_CHANNEL] = 255
+
+        # if we found a rock lets go towards it
+        data.see_sample = 1
+        data.nav_dists = rock_dist
+        data.nav_angles = rock_angles
+
+    else:
+        # no rock so we abide by our general navigation principles
+        data.see_sample = 0
+        dist, angles = to_polar_coords(rover_x, rover_y)
+        data.nav_dists = dist
+        data.nav_angles = angles
+
+    # Let's create more images to add to the mosaic, first a warped image
+    warped = perspect_transform(img, source, destination)
+    
+    # Add the warped image in the upper right hand corner
+    output_image[0:img.shape[0], img.shape[1]:] = warped
+
+    # Overlay worldmap with ground truth map
+    map_add = cv2.addWeighted(data.worldmap, 1, data.ground_truth, 0.5, 0)
+    
+    # Flip map overlay so y-axis points upward and add to output_image 
+    output_image[img.shape[0]:, 0:data.worldmap.shape[1]] = np.flipud(map_add)
+
+    # Then putting some text over the image
+    cv2.putText(output_image, "Populate this image with your analyses to make a video!", (20, 20), 
+                cv2.FONT_HERSHEY_COMPLEX, 0.4, (255, 255, 255), 1)
+    
+    if data.count < len(data.images) - 1:
+        data.count += 1 # Keep track of the index in the Databucket()
+    
+    return output_image
+```
+
+I also spent some time working on getting a path finding algorithm implemented. I did this by driving the rover to various points of interest and noting down the position to build out a graph of nodes. All the nodes were added to the `waypoints` list in the `Graph` object I added to the `RoverState`. Nodes I actually wanted to visit were also added to the `goals` list.
 
 Unfortunately I had issues with getting the algorithm to work, however I did render them on my output video (they're hard to see as I only marked the pixel).
 
@@ -266,7 +363,7 @@ FPS: 21
 
 ### Improvements
 
-* Implement pathfinding algorithm to build out a path of pixels to take us back to `start_position` when we have completed grabbing all the rocks.
+* Implement path finding algorithm to build out a path of pixels to take us back to `start_position` when we have completed grabbing all the rocks.
 * Implement some concept of an objective or goal such that as the robot gathers more information like locations of rocks that it hasn't yet picked up, it will attempt to navigate in that general direction while still observing the other micro rules based on perception. This could also be used to return to the start once we have found all the rocks and for heading towards unmapped pixels when faced with a fork in the road.
 * Make top speed a product of the distance returned by `_to_polar_coordinates`.
 * Implement smarter turning when we are stuck or have insufficient navigable terrain in front of us. This isn't ideal as my rover will end up turning around when picking up a rock to its' right.
