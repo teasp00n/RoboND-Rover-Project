@@ -37,8 +37,6 @@ def _color_thresh(img, rgb_thresh=(160, 160, 160)):
     return color_select
 
 
-# TODO: investigate other methods for this
-# TODO: come up with our own selector based on images
 def _find_rocks(img, selector=(110, 110, 50)):
     """
     Returns an array of 1s and 0s where a 1 indicates a pixel matched the given
@@ -143,7 +141,6 @@ def _field_of_view(img, src, dst):
     return fov
 
 
-# Define a function to perform a perspective transform
 def _perspect_transform(img, src, dst):
     """
     Applies a perspective transform of the image given the source and
